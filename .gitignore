@@ -1,0 +1,47 @@
+# Ignore Docker Compose override files (for local environment configuration)
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# Ignore environment files (credentials and sensitive data)
+.env
+.env.*
+
+# Ignore Docker volumes and data directories
+data/
+volumes/
+db-data/
+
+# Ignore local logs and temporary files
+logs/
+*.log
+*.tmp
+
+# Ignore docker-compose build context
+docker-compose.build.yml
+docker-compose.prod.yml
+docker-compose.dev.yml
+
+# Ignore Docker-specific files
+*.pid
+*.sock
+docker-compose*.log
+
+# Ignore local Docker development tools
+docker-sync.yml
+docker-sync.*
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# macOS files
+.DS_Store
+
+# Linux
+*~
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
