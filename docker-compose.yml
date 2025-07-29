@@ -1,0 +1,310 @@
+services:
+  ultrafeeder:
+  # ultrafeeder combines a number of functions:
+  # - it retrieves and decodes 1090MHz Mode A/C/S data from the SDR(s) using Wiedehopf's branch of readsb
+  # - it implements a `tar1090` based map on port 80 (mapped to port 8080 on the host)
+  # - it includes graph1090 (system statistics website) on http://xxxxx/graphs1090
+  # - it sends ADSB data directly (without the need of additional containers) to the
+  #   "new" aggregators, and, if desired, also to ADSBExchange
+  # - it includes mlat-client to send MLAT data to these aggregators
+  # - it includes an MLAT Hub to consolidate MLAT results and make them available to the built-in map and other services
+
+    image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder
+    tty: true
+    container_name: ultrafeeder
+    hostname: ultrafeeder
+    restart: unless-stopped
+    device_cgroup_rules:
+      - 'c 189:* rwm'
+    ports:
+      - 8080:80 # to expose the web interface
+      - 9273-9274:9273-9274 # to expose the statistics interface to Prometheus
+    environment:
+      # --------------------------------------------------
+      # general parameters:
+      - LOGLEVEL=error
+      - TZ=${FEEDER_TZ}
+      # --------------------------------------------------
+      # SDR related parameters:
+      - READSB_DEVICE_TYPE=rtlsdr
+      - READSB_RTLSDR_DEVICE=${ADSB_SDR_SERIAL}
+      - READSB_RTLSDR_PPM=${ADSB_SDR_PPM}
+      #
+      # --------------------------------------------------
+      # readsb/decoder parameters:
+      - READSB_LAT=${FEEDER_LAT}
+      - READSB_LON=${FEEDER_LONG}
+      - READSB_ALT=${FEEDER_ALT_M}m
+      - READSB_GAIN=${ADSB_SDR_GAIN}
+      - READSB_RX_LOCATION_ACCURACY=2
+      - READSB_STATS_RANGE=true
+      #
+      # --------------------------------------------------
+      # Sources and Aggregator connections:
+      # Note - remove the ones you are not using / feeding
+      # Make sure that each line ends with a semicolon ";"
+      # if you are not using dump978, feel free to remove the first line
+      - ULTRAFEEDER_CONFIG=
+          adsb,dump978,30978,uat_in;
+          adsb,feed.adsb.fi,30004,beast_reduce_plus_out;
+          adsb,in.adsb.lol,30004,beast_reduce_plus_out;
+          adsb,feed.airplanes.live,30004,beast_reduce_plus_out;
+          adsb,feed.planespotters.net,30004,beast_reduce_plus_out;
+          adsb,feed.theairtraffic.com,30004,beast_reduce_plus_out;
+          adsb,data.avdelphi.com,24999,beast_reduce_plus_out;
+          adsb,skyfeed.hpradar.com,30004,beast_reduce_plus_out;
+          adsb,feed.radarplane.com,30001,beast_reduce_plus_out;
+          adsb,dati.flyitalyadsb.com,4905,beast_reduce_plus_out;
+          adsb,feed1.adsbexchange.com,30004,beast_reduce_plus_out;
+          mlat,feed.adsb.fi,31090,39000;
+          mlat,in.adsb.lol,31090,39001;
+          mlat,feed.airplanes.live,31090,39002;
+          mlat,mlat.planespotters.net,31090,39003;
+          mlat,feed.theairtraffic.com,31090,39004;
+          mlat,skyfeed.hpradar.com,31090,39005;
+          mlat,feed.radarplane.com,31090,39006;
+          mlat,dati.flyitalyadsb.com,30100,39007;
+          mlat,feed.adsbexchange.com,31090,39008;
+          mlathub,piaware,30105,beast_in;
+          mlathub,rbfeeder,30105,beast_in;
+          mlathub,radarvirtuel,30105,beast_in;
+          mlathub,planewatch,30105,beast_in;
+      # --------------------------------------------------
+      - UUID=${ULTRAFEEDER_UUID}
+      - MLAT_USER=${FEEDER_NAME}
+      - READSB_FORWARD_MLAT_SBS=true
+      #
+      # --------------------------------------------------
+      # TAR1090 (Map Web Page) parameters:
+      - UPDATE_TAR1090=true
+      - TAR1090_DEFAULTCENTERLAT=${FEEDER_LAT}
+      - TAR1090_DEFAULTCENTERLON=${FEEDER_LONG}
+      - TAR1090_MESSAGERATEINTITLE=true
+      - TAR1090_PAGETITLE=${FEEDER_NAME}
+      - TAR1090_PLANECOUNTINTITLE=true
+      - TAR1090_ENABLE_AC_DB=true
+      - TAR1090_FLIGHTAWARELINKS=true
+      - HEYWHATSTHAT_PANORAMA_ID=${FEEDER_HEYWHATSTHAT_ID}
+      - HEYWHATSTHAT_ALTS=${FEEDER_HEYWHATSTHAT_ALTS}
+      - TAR1090_SITESHOW=true
+      - TAR1090_RANGE_OUTLINE_COLORED_BY_ALTITUDE=true
+      - TAR1090_RANGE_OUTLINE_WIDTH=2.0
+      - TAR1090_RANGERINGSDISTANCES=50,100,150,200
+      - TAR1090_RANGERINGSCOLORS='#1A237E','#0D47A1','#42A5F5','#64B5F6'
+      - TAR1090_USEROUTEAPI=true
+      #
+      # --------------------------------------------------
+      # GRAPHS1090 (Decoder and System Status Web Page) parameters:
+      - GRAPHS1090_DARKMODE=true
+      - ENABLE_978=yes
+      - URL_978=http://dump978/skyaware978
+      #
+      # --------------------------------------------------
+    volumes:
+      - /opt/adsb/ultrafeeder/globe_history:/var/globe_history
+      - /opt/adsb/ultrafeeder/graphs1090:/var/lib/collectd
+      - /proc/diskstats:/proc/diskstats:ro
+      - /dev:/dev
+
+  dump978:
+    image: ghcr.io/sdr-enthusiasts/docker-dump978:latest
+    tty: true
+    container_name: dump978
+    restart: unless-stopped
+    device_cgroup_rules:
+      - 'c 189:* rwm'
+    environment:
+      - TZ=${FEEDER_TZ}
+      - LAT=${FEEDER_LAT}
+      - LON=${FEEDER_LONG}
+      - DUMP978_RTLSDR_DEVICE=${UAT_SDR_SERIAL}
+      - DUMP978_SDR_GAIN=${UAT_SDR_GAIN}
+      - DUMP978_SDR_PPM=${UAT_SDR_PPM}
+    volumes:
+      - /opt/adsb/dump978:/var/globe_history
+      - /dev:/dev
+    ports:
+      - 30980:80
+
+  planewatch:
+    image: ghcr.io/plane-watch/docker-plane-watch:latest
+    tty: true
+    container_name: planewatch
+    restart: unless-stopped
+    environment:
+      - BEASTHOST=ultrafeeder
+      - LAT=${FEEDER_LAT}
+      - LONG=${FEEDER_LONG}
+      - ALT=${FEEDER_ALT_M}m
+      - TZ=${FEEDER_TZ}
+      - API_KEY=${PW_API_KEY}
+
+  piaware:
+    image: ghcr.io/sdr-enthusiasts/docker-piaware:latest
+    tty: true
+    container_name: piaware
+    restart: unless-stopped
+    ports:
+      - 8081:8080
+    environment:
+      - BEASTHOST=ultrafeeder
+      - TZ=${FEEDER_TZ}
+      - FEEDER_ID=${PIAWARE_FEEDER_ID}
+      - UAT_RECEIVER_TYPE=relay
+      - UAT_RECEIVER_HOST=dump978
+
+  fr24:
+    image: ghcr.io/sdr-enthusiasts/docker-flightradar24:latest
+    tty: true
+    container_name: fr24
+    restart: unless-stopped
+    ports:
+      - 8754:8754
+    environment:
+      - BEASTHOST=ultrafeeder
+      - FR24KEY=${FR24_SHARING_KEY}
+      - FR24KEY_UAT=${FR24_SHARING_KEY_UAT}
+      - TZ=${FEEDER_TZ}
+
+  rbfeeder:
+    image: ghcr.io/sdr-enthusiasts/docker-airnavradar:latest
+    tty: true
+    container_name: rbfeeder
+    restart: unless-stopped
+    environment:
+      - BEASTHOST=ultrafeeder
+      - LAT=${FEEDER_LAT}
+      - LONG=${FEEDER_LONG}
+      - ALT=${FEEDER_ALT_M}
+      - TZ=${FEEDER_TZ}
+      - SHARING_KEY=${AIRNAVRADAR_SHARING_KEY}
+      - UAT_RECEIVER_HOST=dump978
+
+  pfclient:
+    #image: ghcr.io/sdr-enthusiasts/docker-planefinder:latest
+    # If you are running on a Raspberry Pi 5, uncomment the below line and comment out the above
+    image: ghcr.io/sdr-enthusiasts/docker-planefinder:5.0.161_arm64
+    tty: true
+    container_name: pfclient
+    restart: unless-stopped
+    ports:
+      - 30053:30053
+    environment:
+      - TZ=${FEEDER_TZ}
+      - BEASTHOST=ultrafeeder
+      - LAT=${FEEDER_LAT}
+      - LONG=${FEEDER_LONG}
+      - SHARECODE=${PLANEFINDER_SHARECODE}
+
+  adsbhub:
+    image: ghcr.io/sdr-enthusiasts/docker-adsbhub:latest
+    tty: true
+    container_name: adsbhub
+    restart: unless-stopped
+    environment:
+      - TZ=${FEEDER_TZ}
+      - SBSHOST=ultrafeeder
+      - CLIENTKEY=${ADSBHUB_STATION_KEY}
+
+  opensky:
+    image: ghcr.io/sdr-enthusiasts/docker-opensky-network:latest
+    tty: true
+    container_name: opensky
+    restart: unless-stopped
+    environment:
+      - TZ=${FEEDER_TZ}
+      - BEASTHOST=ultrafeeder
+      - LAT=${FEEDER_LAT}
+      - LONG=${FEEDER_LONG}
+      - ALT=${FEEDER_ALT_M}
+      - OPENSKY_USERNAME=${OPENSKY_USERNAME}
+      - OPENSKY_SERIAL=${OPENSKY_SERIAL}
+
+  adsbexchange:
+    image: ghcr.io/sdr-enthusiasts/docker-adsbexchange:latest
+    container_name: adsbx
+    restart: always
+    environment:
+      - BEASTHOST=ultrafeeder
+      - TZ=${FEEDER_TZ}
+      - LAT=${FEEDER_LAT}
+      - LONG=${FEEDER_LONG}
+      - ALT=${FEEDER_ALT_M}
+      - SITENAME=${FEEDER_NAME}
+      - UUID=${ULTRAFEEDER_UUID}
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    restart: unless-stopped
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=all
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    environment:
+      - TZ=${FEEDER_TZ}
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=86400
+      - WATCHTOWER_ROLLING_RESTART=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  #radarvirtuel:
+  #  image: ghcr.io/sdr-enthusiasts/docker-radarvirtuel:latest
+  #  tty: true
+  #  container_name: radarvirtuel
+  #  hostname: radarvirtuel
+  #  restart: unless-stopped
+  #  environment:
+  #    - FEEDER_KEY=${RV_FEEDER_KEY}
+  #    - SOURCE_HOST=ultrafeeder:30002
+  #    - RV_SERVER=mg22.adsbnetwork.com:50050
+  #    - VERBOSE=OFF
+  #    - MLAT_SERVER=mlat.adsbnetwork.com:50000
+  #    - MLAT_HOST=ultrafeeder:30005
+  #    - LAT=${FEEDER_LAT}
+  #    - LON=${FEEDER_LONG}
+  #    - ALT=${FEEDER_ALT_M}
+  #  tmpfs:
+  #    - /tmp:rw,nosuid,nodev,noexec,relatime,size=128M
+  #  volumes:
+  #    - "/etc/localtime:/etc/localtime:ro"
+  #    - "/etc/timezone:/etc/timezone:ro"
+
+  #rtl_tcp:
+  #  image: legacycode/rtlsdr
+  #  container_name: rtl_tcp
+  #  devices:
+  #    - /dev/bus/usb:/dev/bus/usb
+  #  restart: unless-stopped
+  #  command: rtl_tcp -a 0.0.0.0 -p 1234 -d 1
+
+  #metermon:
+  #  image: seanauff/metermon:arm
+  #  container_name: metermon
+  #  depends_on: 
+  #    rtl_tcp:
+  #      condition: service_started
+  #  environment:
+  #    - MQTT_BROKER_HOST=10.0.10.3
+  #    - MQTT_BROKER_PORT=1883
+  #    - MQTT_CLIENT_ID=metermon
+  #   - MQTT_USERNAME=metermon
+  #    - MQTT_PASSWORD=pCDgb969Hr?RXDm!
+  #    - MQTT_TOPIC_PREFIX=metermon
+  #    - RTL_TCP_SERVER=rtl_tcp:1234
+  #    - RTLAMR_MSGTYPE=all
+  #    - RTLAMR_FILTERID=150770052,24520451,1550134598
+  #   #- RTLAMR_SYMBOLLENGTH=72
+  #    - RTLAMR_UNIQUE=true
+  #    - METERMON_SEND_RAW=false
+  #    - METERMON_SEND_BY_ID=true
+  #    #- METERMON_ELECTRIC_DIVISOR=100.0
+  #    #- METERMON_WATER_DIVISOR=10.0
+  #  restart: unless-stopped
+
