@@ -1,0 +1,17 @@
+SDRPlay API Installation
+========================
+
+Download the SDRPlay API installer from:
+https://www.sdrplay.com/api/
+
+Select: "Linux (x64 & ARM32/ARM64)"
+
+Place the .run file in this folder, then build:
+
+    docker compose build rtl-airband
+    docker compose up -d rtl-airband
+
+The Dockerfile will extract the correct architecture automatically.
+
+Note: API 3.15+ required for RSPduo/RSPdx-R2 support.
+
