@@ -22,3 +22,52 @@ alwaysApply: false
   - Document mount paths and backup expectations in comments.
 - Logging
   - Standardize to `json-file` or `local` driver with rotation (e.g., `max-size: "10m", max-file: "5"`).
+
+## WUD (What's Up Docker) Auto-Updates
+
+WUD (`/mnt/gooey/docker/stacks/docker-mgmt`) monitors and auto-updates containers. See `docker-mgmt/WUD.md` for full documentation.
+
+### Key Configuration Patterns
+
+**Environment variable format:**
+```
+WUD_{component}_{type}_{name}_{config_item}=value
+```
+
+**Registry providers** (for ghcr.io/lscr.io):
+```yaml
+- WUD_REGISTRY_GHCR_PUBLIC_USERNAME=${GITHUB_USERNAME}
+- WUD_REGISTRY_GHCR_PUBLIC_TOKEN=${GITHUB_TOKEN}
+- WUD_REGISTRY_LSCR_PUBLIC_USERNAME=${GITHUB_USERNAME}
+- WUD_REGISTRY_LSCR_PUBLIC_TOKEN=${GITHUB_TOKEN}
+```
+
+**Auto-update triggers** (per stack):
+```yaml
+- WUD_TRIGGER_DOCKERCOMPOSE_{STACKNAME}_FILE=/wud/stacks/{stack}.yaml
+- WUD_TRIGGER_DOCKERCOMPOSE_{STACKNAME}_PRUNE=true
+```
+
+### Adding a New Stack to WUD
+
+1. Add volume mount in WUD compose.yaml:
+   ```yaml
+   - /mnt/gooey/docker/stacks/{stack}/compose.yaml:/wud/stacks/{stack}.yaml:ro
+   ```
+
+2. Add trigger environment variables:
+   ```yaml
+   - WUD_TRIGGER_DOCKERCOMPOSE_{STACKNAME}_FILE=/wud/stacks/{stack}.yaml
+   - WUD_TRIGGER_DOCKERCOMPOSE_{STACKNAME}_PRUNE=true
+   ```
+
+3. Restart WUD: `cd /mnt/gooey/docker/stacks/docker-mgmt && sudo docker compose up -d`
+
+4. Verify trigger registered: `sudo docker logs wud 2>&1 | grep "{stackname}"`
+
+### Important Notes
+
+- Trigger names must be alphanumeric (no hyphens): `plex-a` → `PLEXA`
+- Compose files must be mounted read-only (`:ro`) into WUD container
+- ghcr/lscr registries require GitHub PAT with `read:packages` scope
+- Custom/local images cannot be auto-updated (not in any registry)

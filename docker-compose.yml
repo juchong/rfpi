@@ -401,18 +401,29 @@ services:
   # What's Up Docker - Container update manager
   # Web UI: http://<host>:3000
   wud:
-    image: fmartinou/whats-up-docker:latest
+    image: getwud/wud:latest
     container_name: wud
     restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /home/pi/rfpi/docker-compose.yml:/wud/stacks/rfpi.yaml:ro
     environment:
+      # Watcher settings
       - WUD_WATCHER_LOCAL_CRON=0 5 * * *            # Check daily at 5 AM
       - WUD_WATCHER_LOCAL_WATCHBYDEFAULT=true       # Watch all containers
-      - WUD_TRIGGER_DOCKER_LOCAL_ENABLE=true        # Enable auto-updates
-      - WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true         # Remove old images
+      # Docker trigger (container restarts)
+      - WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true         # Remove old images after update
+      # Compose trigger (stack updates)
+      - WUD_TRIGGER_DOCKERCOMPOSE_RFPI_FILE=/wud/stacks/rfpi.yaml
+      - WUD_TRIGGER_DOCKERCOMPOSE_RFPI_PRUNE=true
+      # Registry providers (require GitHub credentials with read:packages scope)
+      - WUD_REGISTRY_GHCR_PUBLIC_USERNAME=${GITHUB_USERNAME}
+      - WUD_REGISTRY_GHCR_PUBLIC_TOKEN=${GITHUB_TOKEN}
+      - WUD_REGISTRY_LSCR_PUBLIC_USERNAME=${GITHUB_USERNAME}
+      - WUD_REGISTRY_LSCR_PUBLIC_TOKEN=${GITHUB_TOKEN}
+      # Auth
       - WUD_AUTH_BASIC_JOHN_USER=${WUD_USER}
       - WUD_AUTH_BASIC_JOHN_HASH=${WUD_HASH}
     healthcheck:
