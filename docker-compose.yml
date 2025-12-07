@@ -177,6 +177,11 @@ services:
     container_name: piaware
     restart: unless-stopped
     tty: true
+    depends_on:
+      ultrafeeder:
+        condition: service_healthy
+      dump978:
+        condition: service_healthy
     ports:
       - 8081:8080
     environment:
@@ -199,6 +204,9 @@ services:
     container_name: fr24
     restart: unless-stopped
     tty: true
+    depends_on:
+      ultrafeeder:
+        condition: service_healthy
     ports:
       - 8754:8754
     environment:
@@ -220,6 +228,9 @@ services:
     container_name: pfclient
     restart: unless-stopped
     tty: true
+    depends_on:
+      ultrafeeder:
+        condition: service_healthy
     ports:
       - 30053:30053
     environment:
@@ -241,6 +252,11 @@ services:
     container_name: rbfeeder
     restart: unless-stopped
     tty: true
+    depends_on:
+      ultrafeeder:
+        condition: service_healthy
+      dump978:
+        condition: service_healthy
     environment:
       - TZ=${FEEDER_TZ}
       - BEASTHOST=ultrafeeder
@@ -262,6 +278,9 @@ services:
     container_name: planewatch
     restart: unless-stopped
     tty: true
+    depends_on:
+      ultrafeeder:
+        condition: service_healthy
     environment:
       - TZ=${FEEDER_TZ}
       - BEASTHOST=ultrafeeder
@@ -282,6 +301,9 @@ services:
     container_name: adsbhub
     restart: unless-stopped
     tty: true
+    depends_on:
+      ultrafeeder:
+        condition: service_healthy
     environment:
       - TZ=${FEEDER_TZ}
       - SBSHOST=ultrafeeder
@@ -299,6 +321,9 @@ services:
     container_name: opensky
     restart: unless-stopped
     tty: true
+    depends_on:
+      ultrafeeder:
+        condition: service_healthy
     environment:
       - TZ=${FEEDER_TZ}
       - BEASTHOST=ultrafeeder
@@ -319,6 +344,9 @@ services:
     image: ghcr.io/sdr-enthusiasts/docker-adsbexchange:latest
     container_name: adsbx
     restart: unless-stopped
+    depends_on:
+      ultrafeeder:
+        condition: service_healthy
     environment:
       - TZ=${FEEDER_TZ}
       - BEASTHOST=ultrafeeder
