@@ -1,0 +1,24 @@
+---
+description: >
+  Standards for authoring and validating Docker Compose files used by services.
+globs:
+  - "**/docker-compose*.yml"
+  - "**/compose*.yaml"
+alwaysApply: false
+---
+
+# Compose Standards
+
+- Target **Compose v2 schema**; prefer `docker compose` over legacy `docker-compose`.
+- Required sanity checks before any deploy:
+  - `docker compose -f <file> config` MUST pass with no warnings/errors.
+  - Ensure `restart: unless-stopped` (or justified alternative) for long-running services.
+  - Add `healthcheck` where service provides a clear check endpoint.
+- Networking
+  - Use **named networks** for inter-service isolation; avoid `network_mode: host` unless justified.
+  - Do not bind all ports with `0.0.0.0:*` unless required; prefer reverse proxy exposure.
+- Storage
+  - Use **named volumes** for persistent data; never remove without explicit approval.
+  - Document mount paths and backup expectations in comments.
+- Logging
+  - Standardize to `json-file` or `local` driver with rotation (e.g., `max-size: "10m", max-file: "5"`).

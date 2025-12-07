@@ -1,0 +1,30 @@
+---
+description: >
+  Safe, stepwise procedure to propose, validate, and deploy changes to any Docker stack.
+alwaysApply: true
+---
+
+# Deployment Procedure
+
+1) **Discovery**
+   - Identify stack dir and primary compose file(s).
+   - Run: `docker compose ls` and `docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'`.
+
+2) **Plan & Validate**
+   - Render a plan listing files to change and commands to run.
+   - Validate: `docker compose -f <file> config`.
+   - Validate proxy config if touched (`nginx -t`, `traefik check` or config lint).
+
+3) **Backup**
+   - If editing files, create timestamped backups: `cp file.yml file.yml.$(date +%F-%H%M%S).bak`.
+
+4) **Apply (Zero/Low Downtime when possible)**
+   - Prefer `docker compose pull` then `docker compose up -d --no-deps --build <svc>` where safe.
+   - For schema changes, do rolling restarts service-by-service.
+
+5) **Post-Checks**
+   - `docker compose ps` + `docker compose logs --since=2m <svc>`.
+   - Verify health endpoints and reverse proxy routes (HTTP 200/TLS OK).
+
+6) **Record**
+   - Append changes to `CHANGELOG.md` with date/time, commands, and outcomes.

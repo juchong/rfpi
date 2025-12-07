@@ -1,0 +1,16 @@
+---
+description: >
+  Use the correct remote execution model. Cursor is connected over SSH to a Linux
+  server hosting Docker stacks and web services.
+alwaysApply: true
+---
+
+# Remote SSH Execution Rules
+
+- All shell commands MUST assume a **remote Linux host** (not local dev).
+- Prefer **bash** with `set -Eeuo pipefail` in scripts.
+- When giving commands, **prefix with a short comment** explaining the intent.
+- Validate environment before acting:
+  - `command -v docker || echo "Docker missing"`
+  - `docker --version && docker compose version || docker-compose --version`
+- Keep shell one-liners **copy-pasteable**, avoid interactive prompts (use flags).

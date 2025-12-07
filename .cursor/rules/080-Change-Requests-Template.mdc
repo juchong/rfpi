@@ -1,0 +1,27 @@
+---
+description: >
+  A template the agent should use when proposing any change to server, stacks, or proxy.
+alwaysApply: true
+---
+
+# Change Request Template (Fill Before Acting)
+
+**Context:** (stack path, host, user, services affected)
+
+**Intended Outcome:** (what users will experience)
+
+**Plan (Commands + Files):**
+1. …
+2. …
+
+**Dry Runs / Validations:**
+- `docker compose -f … config`
+- Proxy lint (`nginx -t` / `traefik` check), etc.
+
+**Risk & Impact:** (downtime? data risk?)
+
+**Rollback Plan:** (exact reverse commands / file restores)
+
+**Post-Checks:** (health, logs, curl checks, proxy routes)
+
+**Notes/Changelog:** (short entry to append)

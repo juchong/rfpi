@@ -1,0 +1,25 @@
+---
+description: >
+  Rules for Traefik/Nginx/Caddy front ends that expose web-based services.
+globs:
+  - "**/traefik*.yml"
+  - "**/traefik*.toml"
+  - "**/nginx/**/*.conf"
+  - "**/Caddyfile*"
+alwaysApply: false
+---
+
+# Reverse Proxy Rules
+
+- Centralize external exposure via the proxy; **do not** directly publish containers to 0.0.0.0 unless necessary.
+- For Traefik:
+  - Use **router+service+middleware** pattern; label each target service with:
+    - `traefik.enable=true`
+    - `traefik.http.routers.<name>.rule=Host(`<your-host>`)[ && PathPrefix(`/...`)]`
+    - `traefik.http.routers.<name>.entrypoints=websecure`
+    - `traefik.http.routers.<name>.tls.certresolver=letsencrypt` (or your resolver)
+  - Prefer **least-powerful middlewares** (rate limit, headers, redirect HTTPS).
+- For Nginx:
+  - Validate config with `nginx -t`; use `proxy_set_header` for `Host`, `X-Forwarded-*`.
+- TLS:
+  - Auto-renew certs (ACME) and test expiration; never check in private keys.

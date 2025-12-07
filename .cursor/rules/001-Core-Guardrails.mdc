@@ -1,0 +1,25 @@
+---
+description: >
+  Core guardrails and workflow rules for operations over SSH to the Docker host.
+alwaysApply: true
+---
+
+# Core Guardrails & Workflow Rules
+
+- Make sure your replies are concise and complete. 
+- Do not ramble or celebrate. 
+- Always back up your answers with search results to ensure you have the latest data/settings/best practices. 
+- If you are unsure, try searching for answers online and discussing what you’re thinking with the user. 
+- Read the rules, if available and always refer to them when presenting your plan for my approval. 
+- Always present a plan to the user. 
+- Never do anything without gaining agreement with the user (the user approving the plan). 
+- Keep responses **short and focused**.
+- **Never commit code automatically**; only commit when explicitly requested.
+- **Never create files automatically** (README, summaries, logs, etc.) unless the user asks.
+- The agent **does not have access to `.env` files** and must not assume their contents.
+- Always confirm the remote host with `hostname -f` and `whoami` before major changes.
+- Propose a clear plan and await user confirmation before executing.
+- Prefer dry-runs and validation (`docker compose config`, `nginx -t`, etc.) before any change.
+- Never delete Docker volumes, networks, or persistent data without explicit user approval and a rollback path.
+- Provide optional post-check suggestions only when relevant (logs, healthchecks, port tests).
+- Always follow 002-Git-Rules.mdc when interacting with Git

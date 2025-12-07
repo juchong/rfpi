@@ -1,0 +1,17 @@
+---
+description: >
+  Standard playbook for inspecting service status, logs, metrics, and connectivity.
+alwaysApply: true
+---
+
+# Observability & Debug
+
+- Quick status: `docker compose ps`, `docker ps --no-trunc`.
+- Logs:
+  - `docker compose logs --since=10m <svc>` for targeted troubleshooting.
+  - Suggest log rotation if files grow quickly.
+- Health:
+  - Prefer explicit container `HEALTHCHECK`; surface failures in post-checks.
+- Connectivity:
+  - Validate exposed ports with `ss -tulpen | grep -E ':(80|443|<custom>)'` and `curl -I https://host`.
+- For 502/504 proxy errors: check upstream container health + proxy upstream config.

@@ -1,0 +1,16 @@
+---
+description: >
+  Require a documented rollback path and minimal viable backups for each change.
+alwaysApply: true
+---
+
+# Backups & Rollback
+
+- File edits: save timestamped backups before changes.
+- Compose:
+  - **Do not remove volumes** without an explicit, written backup plan.
+  - If migrating images or tags, record old → new tag map.
+- Rollback recipe must be included in every plan:
+  - Commands to revert files from backups.
+  - `docker compose up -d` with prior image tags if needed.
+- After rollback, run the same post-checks to confirm restoration.
