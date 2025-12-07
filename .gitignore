@@ -2,9 +2,8 @@
 docker-compose.override.yml
 docker-compose.override.yaml
 
-# Ignore environment files (credentials and sensitive data)
-.env
-.env.*
+# Environment files are encrypted with git-crypt (see .gitattributes)
+# .env and .env.* are now tracked and encrypted
 
 # Ignore Docker volumes and data directories
 data/

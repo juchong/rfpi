@@ -1,0 +1,477 @@
+# RTLSDR-Airband configuration for KSEA and surrounding airports
+# Using a SDRPlay RSPduo
+#
+# This is a TEMPLATE file - variables like ${VAR} are substituted at container startup
+
+log_scan_activity = true;
+multiple_demod_threads = true;
+multiple_output_threads = true;
+localtime = true;
+
+devices:
+({
+  type = "soapysdr";
+  device_string = "driver=sdrplay,hardware=RSPduo,mode=ST,iqcorr_ctrl=true,biasT_ctrl=false,extref_ctrl=false,dabnotch_ctrl=true,rfnotch_ctrl=true";
+  gain = "auto";
+  sample_rate = 10.0;
+  centerfreq = 123.5;
+  fft_size = 512;
+  mode = "multichannel";
+  tau = 6000;
+  lowpass = 3000;
+  highpass = 50;
+
+  channels:
+  (
+    {
+      freq = 119.200;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-119p200-departures-east.mp3";
+          name = "119.200 - KSEA Departures East";
+          description = "119.200 - KSEA Departures East";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_dep_east";
+          name = "KSEA Departure East 119.2";
+          description = "KSEA Departure East 119.2";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 119.900;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-119p900-tower-east.mp3";
+          name = "119.900 - KSEA Tower East";
+          description = "119.900 - KSEA Tower East";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_twr_east";
+          name = "KSEA Tower East";
+          description = "KSEA Tower East";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 120.100;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-120p100-approach-west.mp3";
+          name = "120.100 - KSEA Approach West";
+          description = "120.100 - KSEA Approach West";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_app_west";
+          name = "KSEA Approach West";
+          description = "KSEA Approach West";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 120.400;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-120p400-departures-west.mp3";
+          name = "120.400 - KSEA Departures West";
+          description = "120.400 - KSEA Departures West";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_dep_west";
+          name = "KSEA Departure West";
+          description = "KSEA Departure West";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 120.950;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-120p950-tower-west.mp3";
+          name = "120.950 - KSEA Tower West";
+          description = "120.950 - KSEA Tower West";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_twr_west";
+          name = "KSEA Tower West";
+          description = "KSEA Tower West";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 121.500;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-121p500-emergency.mp3";
+          name = "121.500 - KSEA Emergency";
+          description = "121.500 - KSEA Emergency";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_guard";
+          name = "KSEA Area Emergency/Guard";
+          description = "KSEA Area Emergency/Guard";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 121.600;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KRNT-121p600-renton-ground-control.mp3";
+          name = "121.600 - KRNT Ground Control";
+          description = "121.600 - KRNT Ground Control";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_krnt_gnd";
+          name = "KRNT Ground";
+          description = "KRNT Ground";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 121.700;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-121p700-ground-control.mp3";
+          name = "121.700 - KSEA Ground Control";
+          description = "121.700 - KSEA Ground Control";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_gnd";
+          name = "KSEA Ground";
+          description = "KSEA Ground";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 122.275;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-122p275-south-ramp.mp3";
+          name = "122.275 - KSEA South Ramp";
+          description = "122.275 - KSEA South Ramp";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_ramp_s";
+          name = "KSEA South Ramp";
+          description = "KSEA South Ramp";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 123.900;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-123p900-approach-secondary.mp3";
+          name = "123.900 - KSEA Approach Secondary";
+          description = "123.900 - KSEA Approach Secondary";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_app_bu";
+          name = "KSEA Approach (Secondary)";
+          description = "KSEA Approach (Secondary)";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 124.700;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KRNT-124p700-tower-ctaf.mp3";
+          name = "124.700 - KRNT Tower CTAF";
+          description = "124.700 - KRNT Tower CTAF";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_krnt_twr";
+          name = "KRNT Tower/CTAF";
+          description = "KRNT Tower/CTAF";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 125.600;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-125p600-approach-east.mp3";
+          name = "125.600 - KSEA Approach East";
+          description = "125.600 - KSEA Approach East";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_app_e";
+          name = "KSEA Approach East";
+          description = "KSEA Approach East";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 125.900;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-125p900-apprach-se-34-nw-16.mp3";
+          name = "125.900 - KSEA Approach SE RWY 34/NW RWY 16";
+          description = "125.900 - KSEA Approach SE RWY 34/NW RWY 16";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_app_se";
+          name = "KSEA Approach SE";
+          description = "KSEA Approach SE";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 126.250;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-126p250-gate-control-hold.mp3";
+          name = "126.250 - KSEA Gate Control/Hold";
+          description = "126.250 - KSEA Gate Control/Hold";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_gate_hold";
+          name = "KSEA Gate Control/Hold";
+          description = "KSEA Gate Control/Hold";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 126.500;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-126p500-approach-south.mp3";
+          name = "126.500 - KSEA Approach South";
+          description = "126.500 - KSEA Approach South";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_app_s";
+          name = "KSEA Approach South";
+          description = "KSEA Approach South";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 126.875;
+      modulation = "am";
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "KSEA-126p875-north-ramp-cargo.mp3";
+          name = "126.875 - KSEA North Ramp/Cargo";
+          description = "126.875 - KSEA North Ramp/Cargo";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
+        },
+        {
+          type = "icecast";
+          server = "${AIRBAND_LIVEATC_SERVER}";
+          port = ${AIRBAND_LIVEATC_PORT};
+          mountpoint = "ksea3_ramp_n_cargo";
+          name = "KSEA North Ramp/Cargo";
+          description = "KSEA North Ramp/Cargo";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    }
+  );
+}
+);
+
