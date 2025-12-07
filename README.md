@@ -32,9 +32,24 @@ Dockerized ADS-B/UAT feeder stack and ATC airband scanner for Raspberry Pi.
 
 Streams 17 KSEA/KRNT aviation frequencies using SDRPlay RSPduo.
 
-**Requirements:**
-- SDRPlay API service running on host: `systemctl enable --now sdrplay`
+**Host requirements:**
+- SDRPlay API service running: `systemctl enable --now sdrplay`
 - USB device access and `/dev/shm` for shared memory IPC
+
+**Build setup:**
+
+1. Download SDRPlay API (Linux x64/ARM32/ARM64) from [sdrplay.com/api](https://www.sdrplay.com/api/)
+2. Place the `.run` file in `rtl-airband/sdrplay/`:
+   ```bash
+   cp ~/Downloads/SDRplay_RSP_API-Linux-*.run rtl-airband/sdrplay/
+   ```
+3. Build and start:
+   ```bash
+   docker compose build rtl-airband
+   docker compose up -d rtl-airband
+   ```
+
+The Dockerfile extracts the correct architecture automatically. Requires API 3.15+ for RSPduo/RSPdx-R2 support.
 
 ### Monitoring & Utilities
 
@@ -176,9 +191,8 @@ rfpi/
 ├── .gitattributes          # git-crypt config
 ├── promtail-config.yml     # Log shipping config
 └── rtl-airband/
-    ├── Dockerfile          # Custom image with SDRPlay
+    ├── Dockerfile          # Custom image (downloads SDRPlay API)
     ├── entrypoint.sh       # Config templating
-    ├── config/
-    │   └── rtl_airband.conf.template
-    └── sdrplay/            # SDRPlay libraries
+    └── config/
+        └── rtl_airband.conf.template
 ```

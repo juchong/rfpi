@@ -5,6 +5,10 @@ docker-compose.override.yaml
 # Environment files are encrypted with git-crypt (see .gitattributes)
 # .env and .env.* are now tracked and encrypted
 
+# SDRPlay extracted files (keep only .run installer)
+rtl-airband/sdrplay/*.so*
+rtl-airband/sdrplay/*.h
+
 # Ignore Docker volumes and data directories
 data/
 volumes/

@@ -1,7 +1,11 @@
 # RTLSDR-Airband with SDRPlay support
-# Builds SoapySDRPlay module from source to match container's SoapySDR ABI
+# Installs SDRPlay API from .run file and builds SoapySDRPlay from source
 #
-# IMPORTANT: SDRPlay requires:
+# PREREQUISITES:
+# 1. Download SDRPlay API installer from https://www.sdrplay.com/api/
+# 2. Place the .run file in rtl-airband/sdrplay/ folder
+#
+# RUNTIME REQUIREMENTS:
 # 1. sdrplay_apiService running on the HOST (not in container)
 # 2. /dev/shm mounted into container for shared memory IPC
 # 3. USB device access via --device=/dev/bus/usb
@@ -21,14 +25,28 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy SDRPlay API library (built for aarch64/ARM64)
-COPY sdrplay/libsdrplay_api.so.3.15 /usr/local/lib/
-RUN ln -sf /usr/local/lib/libsdrplay_api.so.3.15 /usr/local/lib/libsdrplay_api.so.3 && \
-    ln -sf /usr/local/lib/libsdrplay_api.so.3 /usr/local/lib/libsdrplay_api.so && \
-    ldconfig
-
-# Copy SDRPlay API headers (needed for build)
-COPY sdrplay/sdrplay_api*.h /usr/local/include/
+# Copy and extract SDRPlay API installer
+COPY sdrplay/*.run /tmp/sdrplay_api.run
+RUN chmod +x /tmp/sdrplay_api.run && \
+    cd /tmp && \
+    ./sdrplay_api.run --tar -xf && \
+    # Select correct architecture
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then \
+      LIB_DIR="arm64"; \
+    elif [ "$ARCH" = "armv7l" ]; then \
+      LIB_DIR="armhf"; \
+    else \
+      LIB_DIR="amd64"; \
+    fi && \
+    echo "Installing SDRPlay API for architecture: $LIB_DIR" && \
+    cp /tmp/${LIB_DIR}/libsdrplay_api.so.* /usr/local/lib/ && \
+    cp /tmp/inc/*.h /usr/local/include/ && \
+    cd /usr/local/lib && \
+    ln -sf libsdrplay_api.so.* libsdrplay_api.so.3 && \
+    ln -sf libsdrplay_api.so.3 libsdrplay_api.so && \
+    ldconfig && \
+    rm -rf /tmp/sdrplay_api.run /tmp/arm* /tmp/amd64 /tmp/inc /tmp/*.sh /tmp/*.txt
 
 # Build SoapySDRPlay from source (matches container's SoapySDR ABI)
 RUN git clone https://github.com/pothosware/SoapySDRPlay.git /tmp/SoapySDRPlay && \
