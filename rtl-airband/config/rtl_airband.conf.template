@@ -14,7 +14,7 @@ devices:
   device_string = "driver=sdrplay,hardware=RSPduo,mode=ST,iqcorr_ctrl=true,biasT_ctrl=false,extref_ctrl=false,dabnotch_ctrl=true,rfnotch_ctrl=true";
   gain = "auto";
   sample_rate = 10.0;
-  centerfreq = 123.5;
+  centerfreq = 123.4375;
   fft_size = 512;
   mode = "multichannel";
   tau = 6000;
@@ -468,6 +468,25 @@ devices:
           genre = "ATC";
           username = "source";
           password = "${AIRBAND_LIVEATC_PASSWORD}";
+        }
+      );
+    },
+    {
+      freq = 122.975;
+      modulation = "am";
+      ampfactor = 0.5;
+      bandwidth = 8000;
+      outputs: (
+        {
+          type = "icecast";
+          server = "${AIRBAND_ICECAST_SERVER}";
+          port = ${AIRBAND_ICECAST_PORT};
+          mountpoint = "S50-122p975-ctaf.mp3";
+          name = "122.975 - S50 Auburn CTAF";
+          description = "122.975 - S50 Auburn CTAF";
+          genre = "ATC";
+          username = "source";
+          password = "${AIRBAND_ICECAST_PASSWORD}";
         }
       );
     }
