@@ -215,7 +215,7 @@ services:
       - FR24KEY=${FR24_SHARING_KEY}
       - FR24KEY_UAT=${FR24_SHARING_KEY_UAT}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8754/"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8754/monitor.json"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -289,7 +289,7 @@ services:
       - ALT=${FEEDER_ALT_M}m
       - API_KEY=${PW_API_KEY}
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "plane-watch"]
+      test: ["CMD-SHELL", "grep -q pw-feeder /proc/[0-9]*/comm"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -356,7 +356,7 @@ services:
       - SITENAME=${FEEDER_NAME}
       - UUID=${ULTRAFEEDER_UUID}
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "feed-adsbx"]
+      test: ["CMD", "pgrep", "-f", "adsbexchange-feed"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -383,7 +383,7 @@ services:
       - ./promtail-config.yml:/etc/promtail/config.yml:ro
     command: -config.file=/etc/promtail/config.yml -config.expand-env=true
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9080/ready"]
+      test: ["CMD", "pgrep", "-x", "promtail"]
       interval: 60s
       timeout: 10s
       retries: 3
