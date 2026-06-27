@@ -18,6 +18,9 @@ services:
     image: rtlsdr-airband-sdrplay:local
     container_name: rtl-airband
     restart: unless-stopped
+    # Disabled from default stack bring-up; start explicitly with:
+    #   docker compose --profile airband up -d
+    profiles: ["airband"]
     # SDRPlay uses shared memory IPC with host sdrplay_apiService
     ipc: host
     environment:
@@ -215,7 +218,8 @@ services:
       - FR24KEY=${FR24_SHARING_KEY}
       - FR24KEY_UAT=${FR24_SHARING_KEY_UAT}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8754/monitor.json"]
+      # fr24 httpd does not answer HEAD requests (--spider hangs); use a GET to /dev/null
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8754/monitor.json"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -363,6 +367,45 @@ services:
       start_period: 60s
 
   # ===========================================================================
+  # ENVIRONMENTAL SENSORS
+  # ===========================================================================
+
+  # BME680 -> MQTT: temperature, humidity, pressure, gas resistance
+  # Reads the Bosch BME680 over I2C (bus 1 / GPIO2-3, addr 0x77) in userspace
+  # and publishes to MQTT with Home Assistant auto-discovery.
+  # NOTE: Requires host I2C enabled (dtparam=i2c_arm=on) and sensor on /dev/i2c-1
+  bme680:
+    build:
+      context: ./bme680-mqtt
+      dockerfile: Dockerfile
+    image: bme680-mqtt:local
+    container_name: bme680
+    restart: unless-stopped
+    environment:
+      - MQTT_HOST=${MQTT_HOST}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+      - MQTT_USERNAME=${MQTT_USERNAME}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
+      - BME680_TOPIC_PREFIX=${BME680_TOPIC_PREFIX:-rfpi/bme680}
+      - BME680_INTERVAL=${BME680_INTERVAL:-30}
+      - BME680_I2C_ADDR=${BME680_I2C_ADDR:-0x77}
+      - BME680_I2C_BUS=${BME680_I2C_BUS:-1}
+      - BME680_HA_DISCOVERY=${BME680_HA_DISCOVERY:-true}
+    devices:
+      - /dev/i2c-1:/dev/i2c-1
+    healthcheck:
+      test: ["CMD-SHELL", "test $(( $(date +%s) - $(cat /tmp/bme680_healthy 2>/dev/null || echo 0) )) -lt 90"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================================================
   # MONITORING & LOGGING
   # ===========================================================================
 
@@ -393,49 +436,3 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
-  # ===========================================================================
-  # UTILITIES
-  # ===========================================================================
-
-  # What's Up Docker - Container update manager
-  # Web UI: http://<host>:3000
-  wud:
-    image: getwud/wud:latest
-    container_name: wud
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /home/pi/rfpi/docker-compose.yml:/wud/stacks/rfpi.yaml:ro
-    environment:
-      # Watcher settings
-      - WUD_WATCHER_LOCAL_CRON=0 5 * * *            # Check daily at 5 AM
-      - WUD_WATCHER_LOCAL_WATCHBYDEFAULT=true       # Watch all containers
-      # Docker trigger (container restarts)
-      - WUD_TRIGGER_DOCKER_LOCAL_PRUNE=true         # Remove old images after update
-      # Compose trigger (stack updates)
-      - WUD_TRIGGER_DOCKERCOMPOSE_RFPI_FILE=/wud/stacks/rfpi.yaml
-      - WUD_TRIGGER_DOCKERCOMPOSE_RFPI_PRUNE=true
-      # Registry providers (require GitHub credentials with read:packages scope)
-      - WUD_REGISTRY_HUB_PUBLIC_LOGIN=${DOCKER_USERNAME}
-      - WUD_REGISTRY_HUB_PUBLIC_TOKEN=${DOCKER_TOKEN}
-      - WUD_REGISTRY_GHCR_PUBLIC_USERNAME=${GITHUB_USERNAME}
-      - WUD_REGISTRY_GHCR_PUBLIC_TOKEN=${GITHUB_TOKEN}
-      - WUD_REGISTRY_LSCR_PUBLIC_USERNAME=${GITHUB_USERNAME}
-      - WUD_REGISTRY_LSCR_PUBLIC_TOKEN=${GITHUB_TOKEN}
-      # Auth
-      - WUD_AUTH_BASIC_JOHN_USER=${WUD_USER}
-      - WUD_AUTH_BASIC_JOHN_HASH=${WUD_HASH}
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"

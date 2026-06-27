@@ -2,3 +2,6 @@
 .env filter=git-crypt diff=git-crypt
 .env.* filter=git-crypt diff=git-crypt
 
+# Keep the placeholder template readable (never encrypted)
+.env.example !filter !diff
+
