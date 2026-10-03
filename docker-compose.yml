@@ -1,57 +1,30 @@
 # =============================================================================
-# ADS-B/UAT Feeder Stack + Airband Scanner
+# rf-pi: ADS-B feeder stack + BME680 environmental sensor + log shipping
 # =============================================================================
+# Conventions for this file
+# - Health: the upstream sdr-enthusiasts / plane-watch images ship their own
+#   HEALTHCHECKs (readsb data freshness, s6 service death tallies, established
+#   TCP sessions to the aggregator). Do not add a `test:` override here: a
+#   pgrep-style test matches the s6 supervisor and keeps a feeder stuck in an
+#   auth/restart loop "healthy". Only images without a built-in check (bme680,
+#   promtail) define a test below.
+# - Logging: the daemon default applies to every service (`local` driver,
+#   50m x 3 files, /etc/docker/daemon.json); no per-service logging blocks.
+# - Limits: pids_limit guards against fork storms. Memory limits are deferred
+#   until the memory cgroup is enabled on the host (cgroup_disable=memory is
+#   on the kernel cmdline until the next reboot).
+# - Airband: the VHF ATC scanner is no longer in Docker. It runs on the host
+#   as airband-feeds.service from /home/pi/pluto-airband (Pluto+ receiver).
+# - Ports bind 0.0.0.0 (LAN-only host); see README "Follow-ups".
 
 services:
 
   # ===========================================================================
-  # AIRBAND SCANNER (SDRPlay RSPduo)
+  # CORE DECODER
   # ===========================================================================
 
-  # RTLSDR-Airband: ATC audio streaming to Icecast/LiveATC
-  # Streams KSEA/KRNT aviation frequencies to LiveATC and local Icecast
-  # NOTE: Requires sdrplay_apiService running on host (systemctl enable --now sdrplay)
-  rtl-airband:
-    build:
-      context: ./rtl-airband
-      dockerfile: Dockerfile
-    image: rtlsdr-airband-sdrplay:local
-    container_name: rtl-airband
-    restart: unless-stopped
-    # Disabled from default stack bring-up; start explicitly with:
-    #   docker compose --profile airband up -d
-    profiles: ["airband"]
-    # SDRPlay uses shared memory IPC with host sdrplay_apiService
-    ipc: host
-    environment:
-      - AIRBAND_ICECAST_SERVER=${AIRBAND_ICECAST_SERVER}
-      - AIRBAND_ICECAST_PORT=${AIRBAND_ICECAST_PORT}
-      - AIRBAND_ICECAST_PASSWORD=${AIRBAND_ICECAST_PASSWORD}
-      - AIRBAND_LIVEATC_SERVER=${AIRBAND_LIVEATC_SERVER}
-      - AIRBAND_LIVEATC_PORT=${AIRBAND_LIVEATC_PORT}
-      - AIRBAND_LIVEATC_PASSWORD=${AIRBAND_LIVEATC_PASSWORD}
-    volumes:
-      - ./rtl-airband/config/rtl_airband.conf.template:/app/rtl_airband.conf.template:ro
-      - /dev/shm:/dev/shm
-    devices:
-      - /dev/bus/usb:/dev/bus/usb
-    healthcheck:
-      test: ["CMD", "pgrep", "-x", "rtl_airband"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
-
-  # ===========================================================================
-  # CORE DECODERS
-  # ===========================================================================
-
-  # Ultrafeeder: Main ADS-B decoder, tar1090 map, MLAT hub, and aggregator feeds
+  # Ultrafeeder: readsb (RTL-SDR), tar1090 map, graphs1090, MLAT hub, and the
+  # direct aggregator feeds.
   # Web UI: http://<host>:8080 | Graphs: http://<host>:8080/graphs1090
   ultrafeeder:
     image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder
@@ -59,6 +32,10 @@ services:
     hostname: ultrafeeder
     restart: unless-stopped
     tty: true
+    pids_limit: 256   # ~86 tasks live (readsb x2, 9 mlat-clients, collectd, nginx, s6)
+    # RTL-SDR via libusb: the only device readsb opens is /dev/bus/usb/<bus>/<dev>
+    # (USB char devices, major 189). The cgroup rule allows them, the bind mount
+    # makes them (and re-enumerated nodes after a replug) visible.
     device_cgroup_rules:
       - 'c 189:* rwm'
     ports:
@@ -81,7 +58,6 @@ services:
       - READSB_STATS_RANGE=true
       # Aggregator feeds (ADS-B + MLAT)
       - ULTRAFEEDER_CONFIG=
-          adsb,dump978,30978,uat_in;
           adsb,feed.adsb.fi,30004,beast_reduce_plus_out;
           adsb,in.adsb.lol,30004,beast_reduce_plus_out;
           adsb,feed.airplanes.live,30004,beast_reduce_plus_out;
@@ -127,50 +103,26 @@ services:
       - HEYWHATSTHAT_ALTS=${FEEDER_HEYWHATSTHAT_ALTS}
       # graphs1090 settings
       - GRAPHS1090_DARKMODE=true
-      - ENABLE_978=yes
-      - URL_978=http://dump978/skyaware978
     volumes:
+      # Persistent state on the host. Back up /opt/adsb/ultrafeeder if the
+      # globe history / graph history matters; both regenerate otherwise.
       - /opt/adsb/ultrafeeder/globe_history:/var/globe_history
       - /opt/adsb/ultrafeeder/graphs1090:/var/lib/collectd
       - /proc/diskstats:/proc/diskstats:ro
-      - /dev:/dev
+      - /dev/bus/usb:/dev/bus/usb
+    # The image's own test (/healthcheck.sh: readsb aircraft.json updated in the
+    # last 60 s + nginx/readsb/tar1090 s6 death tallies) is inherited; only the
+    # cadence is tightened from upstream's 600 s. The feeders below gate on
+    # `service_healthy`, and a 600 s first probe would hold every feeder back
+    # for 10 minutes on a cold start.
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
       interval: 60s
-      timeout: 10s
+      timeout: 30s
       retries: 3
-      start_period: 60s
-
-  # dump978: UAT (978MHz) decoder for US traffic
-  # Web UI: http://<host>:30980
-  dump978:
-    image: ghcr.io/sdr-enthusiasts/docker-dump978:latest
-    container_name: dump978
-    restart: unless-stopped
-    tty: true
-    device_cgroup_rules:
-      - 'c 189:* rwm'
-    ports:
-      - 30980:80
-    environment:
-      - TZ=${FEEDER_TZ}
-      - LAT=${FEEDER_LAT}
-      - LON=${FEEDER_LONG}
-      - DUMP978_RTLSDR_DEVICE=${UAT_SDR_SERIAL}
-      - DUMP978_SDR_GAIN=${UAT_SDR_GAIN}
-      - DUMP978_SDR_PPM=${UAT_SDR_PPM}
-    volumes:
-      - /opt/adsb/dump978:/var/globe_history
-      - /dev:/dev
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      start_period: 120s
 
   # ===========================================================================
-  # FEEDERS
+  # FEEDERS (all take Beast/SBS data from ultrafeeder; built-in HEALTHCHECKs)
   # ===========================================================================
 
   # FlightAware (piaware)
@@ -180,10 +132,9 @@ services:
     container_name: piaware
     restart: unless-stopped
     tty: true
+    pids_limit: 128
     depends_on:
       ultrafeeder:
-        condition: service_healthy
-      dump978:
         condition: service_healthy
     ports:
       - 8081:8080
@@ -191,14 +142,6 @@ services:
       - TZ=${FEEDER_TZ}
       - BEASTHOST=ultrafeeder
       - FEEDER_ID=${PIAWARE_FEEDER_ID}
-      - UAT_RECEIVER_TYPE=relay
-      - UAT_RECEIVER_HOST=dump978
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
   # FlightRadar24
   # Web UI: http://<host>:8754
@@ -207,6 +150,7 @@ services:
     container_name: fr24
     restart: unless-stopped
     tty: true
+    pids_limit: 128
     depends_on:
       ultrafeeder:
         condition: service_healthy
@@ -216,14 +160,6 @@ services:
       - TZ=${FEEDER_TZ}
       - BEASTHOST=ultrafeeder
       - FR24KEY=${FR24_SHARING_KEY}
-      - FR24KEY_UAT=${FR24_SHARING_KEY_UAT}
-    healthcheck:
-      # fr24 httpd does not answer HEAD requests (--spider hangs); use a GET to /dev/null
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8754/monitor.json"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
   # PlaneFinder
   # Web UI: http://<host>:30053
@@ -232,6 +168,7 @@ services:
     container_name: pfclient
     restart: unless-stopped
     tty: true
+    pids_limit: 128
     depends_on:
       ultrafeeder:
         condition: service_healthy
@@ -243,12 +180,6 @@ services:
       - LAT=${FEEDER_LAT}
       - LONG=${FEEDER_LONG}
       - SHARECODE=${PLANEFINDER_SHARECODE}
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:30053/"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
   # AirNav RadarBox
   rbfeeder:
@@ -256,10 +187,9 @@ services:
     container_name: rbfeeder
     restart: unless-stopped
     tty: true
+    pids_limit: 128
     depends_on:
       ultrafeeder:
-        condition: service_healthy
-      dump978:
         condition: service_healthy
     environment:
       - TZ=${FEEDER_TZ}
@@ -268,13 +198,6 @@ services:
       - LONG=${FEEDER_LONG}
       - ALT=${FEEDER_ALT_M}
       - SHARING_KEY=${AIRNAVRADAR_SHARING_KEY}
-      - UAT_RECEIVER_HOST=dump978
-    healthcheck:
-      test: ["CMD", "pgrep", "-f", "rbfeeder"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
   # Plane.watch
   planewatch:
@@ -282,6 +205,7 @@ services:
     container_name: planewatch
     restart: unless-stopped
     tty: true
+    pids_limit: 128
     depends_on:
       ultrafeeder:
         condition: service_healthy
@@ -292,12 +216,6 @@ services:
       - LONG=${FEEDER_LONG}
       - ALT=${FEEDER_ALT_M}m
       - API_KEY=${PW_API_KEY}
-    healthcheck:
-      test: ["CMD-SHELL", "grep -q pw-feeder /proc/[0-9]*/comm"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
   # ADSBHub
   adsbhub:
@@ -305,6 +223,7 @@ services:
     container_name: adsbhub
     restart: unless-stopped
     tty: true
+    pids_limit: 128
     depends_on:
       ultrafeeder:
         condition: service_healthy
@@ -312,12 +231,6 @@ services:
       - TZ=${FEEDER_TZ}
       - SBSHOST=ultrafeeder
       - CLIENTKEY=${ADSBHUB_STATION_KEY}
-    healthcheck:
-      test: ["CMD", "pgrep", "-f", "adsbhub"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
   # OpenSky Network
   opensky:
@@ -325,6 +238,7 @@ services:
     container_name: opensky
     restart: unless-stopped
     tty: true
+    pids_limit: 128
     depends_on:
       ultrafeeder:
         condition: service_healthy
@@ -336,18 +250,13 @@ services:
       - ALT=${FEEDER_ALT_M}
       - OPENSKY_USERNAME=${OPENSKY_USERNAME}
       - OPENSKY_SERIAL=${OPENSKY_SERIAL}
-    healthcheck:
-      test: ["CMD", "pgrep", "-f", "opensky"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
   # ADS-B Exchange
   adsbexchange:
     image: ghcr.io/sdr-enthusiasts/docker-adsbexchange:latest
     container_name: adsbx
     restart: unless-stopped
+    pids_limit: 128
     depends_on:
       ultrafeeder:
         condition: service_healthy
@@ -359,20 +268,42 @@ services:
       - ALT=${FEEDER_ALT_M}
       - SITENAME=${FEEDER_NAME}
       - UUID=${ULTRAFEEDER_UUID}
-    healthcheck:
-      test: ["CMD", "pgrep", "-f", "adsbexchange-feed"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+
+  # Radar1090 UK: UK/Ireland-focused aggregator (https://www.1090mhz.uk/)
+  # Requires a feeder key: email mike@tubby.org (or WhatsApp +44 1905 888020)
+  # with a station name (3-9 chars) and antenna lat/lon, then set RADAR1090_KEY
+  # in .env. Gated behind the 'radar1090' profile so it does not start until
+  # keyed; start with:  docker compose --profile radar1090 up -d radar1090
+  # (or remove the profiles line below to include it in the default stack).
+  # The image ships its own watchdog-based HEALTHCHECK.
+  radar1090:
+    image: ghcr.io/sdr-enthusiasts/docker-radar1090:latest
+    container_name: radar1090
+    hostname: radar1090
+    restart: unless-stopped
+    pids_limit: 128
+    profiles: ["radar1090"]
+    depends_on:
+      ultrafeeder:
+        condition: service_healthy
+    environment:
+      - TZ=${FEEDER_TZ}
+      - RADAR1090_KEY=${RADAR1090_KEY}
+      - BEASTHOST=ultrafeeder
+      - VERBOSE=false
+    tmpfs:
+      - /run:exec,size=256M
+      - /tmp:size=128M
+      - /var/log:size=32M
 
   # ===========================================================================
   # ENVIRONMENTAL SENSORS
   # ===========================================================================
 
-  # BME680 -> MQTT: temperature, humidity, pressure, gas resistance
-  # Reads the Bosch BME680 over I2C (bus 1 / GPIO2-3, addr 0x77) in userspace
-  # and publishes to MQTT with Home Assistant auto-discovery.
+  # BME680 -> MQTT: temperature, humidity, pressure, dew point, gas resistance,
+  # air-quality score. Reads the Bosch BME680 over I2C (bus 1 / GPIO2-3,
+  # addr 0x77) in userspace and publishes to MQTT with Home Assistant
+  # auto-discovery. See README "BME680 -> MQTT publisher".
   # NOTE: Requires host I2C enabled (dtparam=i2c_arm=on) and sensor on /dev/i2c-1
   bme680:
     build:
@@ -393,23 +324,25 @@ services:
       - BME680_HA_DISCOVERY=${BME680_HA_DISCOVERY:-true}
     devices:
       - /dev/i2c-1:/dev/i2c-1
+    # Local image, no built-in HEALTHCHECK. The publisher writes the epoch time
+    # to /tmp/bme680_healthy only after a state message was accepted by a live
+    # broker connection, so this goes unhealthy when publishing stalls (the
+    # process exits 1 after 10 failed cycles and restart: unless-stopped
+    # recovers it).
     healthcheck:
       test: ["CMD-SHELL", "test $(( $(date +%s) - $(cat /tmp/bme680_healthy 2>/dev/null || echo 0) )) -lt 90"]
       interval: 60s
       timeout: 10s
       retries: 3
       start_period: 30s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
 
   # ===========================================================================
   # MONITORING & LOGGING
   # ===========================================================================
 
-  # Promtail: Ship Docker logs to Loki
+  # Promtail: ship container logs to the remote Loki (TLS verified, basic auth).
+  # Discovery and log streaming both go through the Docker API over the socket
+  # (docker_sd_configs), so no access to /var/lib/docker/containers is needed.
   promtail:
     image: grafana/promtail:latest
     container_name: promtail
@@ -421,18 +354,20 @@ services:
       - LOKI_TENANT_ID=${LOKI_TENANT_ID:-}
       - HOSTNAME=rf-pi
     volumes:
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      # Read positions persist across restarts so history is not re-shipped.
+      # Small and regenerable (worst case: duplicate lines in Loki); no backup.
+      - promtail-positions:/var/lib/promtail
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./promtail-config.yml:/etc/promtail/config.yml:ro
     command: -config.file=/etc/promtail/config.yml -config.expand-env=true
+    # Image has no built-in HEALTHCHECK; exact process-name match (-x).
     healthcheck:
       test: ["CMD", "pgrep", "-x", "promtail"]
       interval: 60s
       timeout: 10s
       retries: 3
       start_period: 30s
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
+
+volumes:
+  # promtail read-position file (see promtail service above).
+  promtail-positions:

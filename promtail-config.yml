@@ -3,7 +3,9 @@ server:
   grpc_listen_port: 0
 
 positions:
-  filename: /tmp/positions.yaml
+  # Persisted on the promtail-positions named volume (docker-compose.yml) so a
+  # restart resumes where it left off instead of re-shipping all history.
+  filename: /var/lib/promtail/positions.yaml
 
 clients:
   - url: ${LOKI_URL}/loki/api/v1/push
@@ -11,8 +13,11 @@ clients:
       username: ${LOKI_USERNAME}
       password: ${LOKI_PASSWORD}
     tenant_id: ${LOKI_TENANT_ID:-}
-    tls_config:
-      insecure_skip_verify: true
+    # TLS is verified against the system CA bundle. The Loki endpoint presents
+    # a publicly trusted Let's Encrypt certificate (checked 2026-10-03:
+    # `curl` without -k and `openssl s_client` both verify OK), so
+    # insecure_skip_verify is not needed; it would only let a MITM capture the
+    # basic-auth credentials.
 
 scrape_configs:
   # Scrape Docker container logs
@@ -35,4 +40,3 @@ scrape_configs:
       # Add compose project label
       - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
         target_label: project
-
