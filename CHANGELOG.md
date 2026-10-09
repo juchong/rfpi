@@ -3,6 +3,39 @@
 Operational changes to the `rf-pi` Docker stack, newest first
 (`.cursor/rules/030-Deployment-Procedure.mdc` step 6). Dates are local (PDT).
 
+## 2026-10-09 — image refresh (all services)
+
+Routine `docker compose pull` + `up -d` per the README update procedure; the
+local BME680 image rebuilt with `--pull` on a fresh `python` base. Pre-update
+image ids/digests recorded in `~/rfpi-images-2026-10-09-before.txt` and
+`~/rfpi-image-digests-2026-10-09-before.txt` (post-update digests in the
+matching `-after` file); the previous local image is tagged `bme680-mqtt:prev`.
+
+Updated (build date old → new): ultrafeeder, piaware, fr24, pfclient, rbfeeder,
+adsbhub, opensky (all 2026-06-26/29 → 2026-10-07); planewatch (2026-06-14 →
+2026-07-22). Unchanged: adsbexchange, promtail (already at the latest digest).
+
+Fixes: planewatch had been failing since 2026-10-03 with `x509: certificate
+signed by unknown authority` against `feed.push.plane.watch` — the June image's
+CA bundle no longer trusted the feed-in server's certificate (the real upstream
+healthcheck enabled on 2026-10-03 is what surfaced it). The July image connects.
+
+Verification: all containers healthy within ~2.5 min (piaware last, inside its
+start period); planewatch tunnel + MLAT established; bme680 publishing;
+fr24/piaware connected to the receiver. The transient name-resolution errors
+ultrafeeder logs while its dependents restart are expected.
+
+Rollback: `docker compose down <svc> && docker run`-style pinning is not needed —
+retag the recorded old image id to `:latest` (`docker tag <old-id> <repo>:latest`)
+and `docker compose up -d <svc>`; for bme680 `docker tag bme680-mqtt:prev
+bme680-mqtt:local`. Old layers were left in place (≈590 MB reclaimable with
+`docker image prune`) for exactly this.
+
+Not applied (operator decision): 21 upgradable OS packages incl. the kernel
+(`linux-image-rpi-2712`), `raspi-firmware`, `rpi-eeprom` and the docker-ce suite —
+a kernel/firmware upgrade needs a reboot and the docker-ce upgrade restarts every
+container.
+
 ## 2026-10-03 — Phase 4 hardening (review §2 BME680, §5 rfpi)
 
 Source: `/home/pi/REVIEW-2026-10-03.md`. File edits only; applied with the
